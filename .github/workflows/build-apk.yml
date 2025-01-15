@@ -47,7 +47,14 @@ jobs:
                   mavenCentral()
               }
               dependencies {
-                  classpath("com.android.tools.build:gradle:8.1.0")
+                  classpath("com.android.tools.build:gradle:8.2.0") # Actualizado a la última versión
+              }
+          }
+
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
               }
           }
           EOL
@@ -73,6 +80,10 @@ jobs:
               buildTypes {
                   release {
                       isMinifyEnabled = false
+                      proguardFiles(
+                          getDefaultProguardFile("proguard-android-optimize.txt"),
+                          "proguard-rules.pro"
+                      )
                   }
               }
               
@@ -84,6 +95,12 @@ jobs:
 
           dependencies {
               implementation("androidx.appcompat:appcompat:1.6.1")
+              implementation("androidx.core:core-ktx:1.12.0") # Dependencia adicional recomendada
+          }
+
+          repositories {
+              google()
+              mavenCentral()
           }
           EOL
 
