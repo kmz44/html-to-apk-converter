@@ -30,8 +30,8 @@ jobs:
 
     - name: Copy files
       run: |
-        cp -r ../public/* www/
-        cd ..
+        cp -r public/* app/www/
+        cd app
 
     - name: Build APK
       run: |
