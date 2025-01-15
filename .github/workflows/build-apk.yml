@@ -66,10 +66,28 @@ jobs:
         rm -rf cordova
         rm -rf CordovaLib
 
-    - name: Zip Android Studio project
+    - name: Build APK
       run: |
-        cd app/platforms/android
-        zip -r ../../../android-studio-project.zip ./*
+        cd app
+        cordova build android --release
+
+    - name: Create output folders
+      run: |
+        mkdir -p output/Aquí_está_tu_APK
+        mkdir -p output/Tu_APK_para_modificar
+
+    - name: Copy APK to output folder
+      run: |
+        cp app/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk output/Aquí_está_tu_APK/
+
+    - name: Copy Android Studio project to output folder
+      run: |
+        cp -r app/platforms/android/* output/Tu_APK_para_modificar/
+
+    - name: Zip output folders
+      run: |
+        cd output
+        zip -r ../android-studio-project.zip ./*
 
     - name: Upload Android Studio project as artifact
       uses: actions/upload-artifact@v4
