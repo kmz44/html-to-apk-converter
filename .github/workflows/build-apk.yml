@@ -48,16 +48,10 @@ jobs:
         echo "${{ github.event.inputs.js }}" > app/www/script.js
         cd app
 
-    - name: Build Android project
+    - name: Prepare Android project
       run: |
         cd app
-        cordova build android --no-build --verbose
-
-    - name: Prepare Android Studio project
-      run: |
-        cd app/platforms/android
-        ./gradlew wrapper --gradle-version 7.0.2
-        ./gradlew tasks
+        cordova prepare android --no-build
 
     - name: Zip Android Studio project
       run: |
