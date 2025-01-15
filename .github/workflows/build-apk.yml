@@ -42,6 +42,10 @@ jobs:
       run: |
         yes | sdkmanager --licenses
 
+    - name: Install Android tools
+      run: |
+        sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
     - name: Create Cordova project
       run: |
         cordova create app com.example.app App
