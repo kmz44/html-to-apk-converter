@@ -32,6 +32,9 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v2
+
     - name: Install Cordova
       run: npm install -g cordova
 
@@ -47,6 +50,11 @@ jobs:
         echo "${{ github.event.inputs.css }}" > app/www/styles.css
         echo "${{ github.event.inputs.js }}" > app/www/script.js
         cd app
+
+    - name: Install Cordova dependencies
+      run: |
+        cd app
+        npm install
 
     - name: Prepare Android project
       run: |
@@ -67,7 +75,7 @@ jobs:
     - name: Build APK
       run: |
         cd app
-        cordova build android --release
+        cordova build android --release --verbose
 
     - name: Upload APK as artifact
       uses: actions/upload-artifact@v4
