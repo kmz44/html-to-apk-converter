@@ -30,11 +30,13 @@ jobs:
 
     - name: Copy files
       run: |
-          cp -r public/* app/www/
-          cd app
+        cp -r ../public/* www/
+        cd ..
 
     - name: Build APK
-      run: cordova build android
+      run: |
+        cd app
+        cordova build android
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
