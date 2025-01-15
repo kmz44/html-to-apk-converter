@@ -47,7 +47,7 @@ jobs:
                   mavenCentral()
               }
               dependencies {
-                  classpath("com.android.tools.build:gradle:8.2.0") # Actualizado a la última versión
+                  classpath("com.android.tools.build:gradle:8.2.0")
               }
           }
 
@@ -95,7 +95,7 @@ jobs:
 
           dependencies {
               implementation("androidx.appcompat:appcompat:1.6.1")
-              implementation("androidx.core:core-ktx:1.12.0") # Dependencia adicional recomendada
+              implementation("androidx.core:core-ktx:1.12.0")
           }
 
           repositories {
