@@ -1,4 +1,4 @@
-name: Build Android Studio Project
+name: Build Android Studio Project and Generate APK
 
 on:
   workflow_dispatch:
@@ -76,3 +76,14 @@ jobs:
       with:
         name: android-studio-project.zip
         path: android-studio-project.zip
+
+    - name: Build APK
+      run: |
+        cd app
+        cordova build android --release
+
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release.apk
+        path: app/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
