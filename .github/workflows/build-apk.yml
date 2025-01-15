@@ -30,8 +30,8 @@ jobs:
 
     - name: Copy files
       run: |
-        cp -r ../public/* app/www/
-        cd app
+          cp -r public/* app/www/
+          cd app
 
     - name: Build APK
       run: cordova build android
