@@ -1,5 +1,4 @@
 name: Build Android Studio Project and Generate APK
-
 on:
   workflow_dispatch:
     inputs:
@@ -16,69 +15,67 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
+      
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '14'
-
+        
     - name: Set up Java 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
-
+        
     - name: Set up Android SDK
       uses: android-actions/setup-android@v2
-
+      
     - name: Install Cordova
       run: npm install -g cordova
-
+      
     - name: Create Cordova project
       run: |
         cordova create app com.example.app App
         cd app
         cordova platform add android
-
+        
     - name: Copy files
       run: |
         echo "${{ github.event.inputs.html }}" > app/www/index.html
-        echo "${{ github.event.inputs.css }}" > app/www/styles.css
-        echo "${{ github.event.inputs.js }}" > app/www/script.js
-        cd app
-
+        echo "${{ github.event.inputs.css }}" > app/www/css/styles.css
+        echo "${{ github.event.inputs.js }}" > app/www/js/script.js
+        
     - name: Install Cordova dependencies
       run: |
         cd app
         npm install
-
+        
     - name: Prepare Android project
       run: |
         cd app
         cordova prepare android
-
-    - name: Zip Android Studio project
-      run: |
-        cd app/platforms/android
-        zip -r ../../../android-studio-project.zip ./*
-
-    - name: Upload Android Studio project as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-studio-project.zip
-        path: android-studio-project.zip
-
+        
     - name: Build APK
       run: |
         cd app
         cordova build android --release --verbose
-
-    - name: Upload APK as artifact
+        
+    - name: Create Android Studio project archive
+      run: |
+        cd app/platforms/android
+        zip -r ../../../android-studio-project.zip ./*
+        
+    - name: Upload Android Studio project
       uses: actions/upload-artifact@v4
       with:
-        name: app-release.apk
+        name: android-studio-project
+        path: android-studio-project.zip
+        
+    - name: Upload unsigned APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-unsigned
         path: app/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
