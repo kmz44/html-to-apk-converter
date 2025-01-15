@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
 
       - name: Create Android project
         run: |
@@ -37,55 +37,66 @@ jobs:
           echo "${{ github.event.inputs.css }}" > AndroidApp/app/src/main/assets/styles.css
           echo "${{ github.event.inputs.js }}" > AndroidApp/app/src/main/assets/script.js
 
-          # Crear build.gradle raíz
+          # Crear build.gradle raíz usando la nueva sintaxis
           cat > AndroidApp/build.gradle << 'EOL'
-          buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:7.0.4'
-              }
-          }
-
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
+          plugins {
+              id 'com.android.application' version '8.1.0' apply false
           }
           EOL
 
-          # Crear settings.gradle
-          echo "include ':app'" > AndroidApp/settings.gradle
+          # Crear settings.gradle con los repositorios necesarios
+          cat > AndroidApp/settings.gradle << 'EOL'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = 'AndroidApp'
+          include ':app'
+          EOL
 
-          # Crear build.gradle del módulo app
+          # Crear build.gradle del módulo app con configuración actualizada
           cat > AndroidApp/app/build.gradle << 'EOL'
           plugins {
               id 'com.android.application'
           }
 
           android {
-              compileSdkVersion 31
+              namespace 'com.webview.app'
+              compileSdk 34
+
               defaultConfig {
                   applicationId "com.webview.app"
-                  minSdkVersion 21
-                  targetSdkVersion 31
+                  minSdk 24
+                  targetSdk 34
                   versionCode 1
                   versionName "1.0"
               }
+
               buildTypes {
                   release {
                       minifyEnabled false
                       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
           }
 
           dependencies {
-              implementation 'androidx.appcompat:appcompat:1.4.1'
-              implementation 'com.google.android.material:material:1.5.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
           }
           EOL
 
@@ -114,8 +125,7 @@ jobs:
           # Crear AndroidManifest.xml
           cat > AndroidApp/app/src/main/AndroidManifest.xml << 'EOL'
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="com.webview.app">
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
                   android:allowBackup="true"
                   android:icon="@mipmap/ic_launcher"
@@ -143,30 +153,15 @@ jobs:
           </resources>
           EOL
 
-      - name: Setup Gradle
+      - name: Setup Gradle Wrapper
         run: |
           cd AndroidApp
-          mkdir -p gradle/wrapper
-          wget https://services.gradle.org/distributions/gradle-7.0.2-bin.zip -P gradle/wrapper/
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOL'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-7.0.2-bin.zip
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOL
-          
-          cat > gradlew << 'EOL'
-          #!/usr/bin/env sh
-          exec gradle "$@"
-          EOL
-          
+          gradle wrapper
           chmod +x gradlew
 
       - name: Build APK
-        run: |
-          cd AndroidApp
-          ./gradlew assembleDebug
+        working-directory: AndroidApp
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
