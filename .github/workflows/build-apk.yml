@@ -61,7 +61,9 @@ jobs:
 
           # build.gradle de la app
           cat > AndroidApp/app/build.gradle << 'EOL'
-          apply plugin: 'com.android.application'
+          plugins {
+              id 'com.android.application'
+          }
 
           android {
               compileSdkVersion 33
@@ -145,27 +147,20 @@ jobs:
       - name: Setup Gradle
         run: |
           cd AndroidApp
-          wget https://services.gradle.org/distributions/gradle-7.3.3-bin.zip
-          unzip gradle-7.3.3-bin.zip
-          mkdir -p gradle/wrapper
-          cp gradle-7.3.3/bin/gradle gradle/wrapper/
-          chmod +x gradle/wrapper/gradle
-
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOL'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-7.3.3-bin.zip
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
+          # Create gradlew script
+          cat > gradlew << 'EOL'
+          #!/bin/sh
+          exec gradle "$@"
           EOL
-
-          echo "org.gradle.jvmargs=-Xmx2048m" > gradle.properties
+          chmod +x gradlew
+          
+          # Create gradle wrapper
+          gradle wrapper
 
       - name: Build Debug APK
         run: |
           cd AndroidApp
-          chmod +x gradle/wrapper/gradle
-          ./gradle/wrapper/gradle assembleDebug --warning-mode all
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
