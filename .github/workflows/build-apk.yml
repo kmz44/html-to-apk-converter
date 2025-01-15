@@ -61,12 +61,17 @@ jobs:
     - name: Build APK
       run: |
         cd app
-        cordova build android --release --verbose
+        cordova build android --release
+        
+    - name: List APK location
+      run: |
+        cd app
+        find . -name "*.apk" -type f
         
     - name: Create Android Studio project archive
       run: |
-        cd app/platforms/android
-        zip -r ../../../android-studio-project.zip ./*
+        cd app
+        zip -r ../android-studio-project.zip platforms/android
         
     - name: Upload Android Studio project
       uses: actions/upload-artifact@v4
@@ -78,4 +83,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: app-release-unsigned
-        path: app/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
+        path: app/platforms/android/build/outputs/apk/debug/*.apk
