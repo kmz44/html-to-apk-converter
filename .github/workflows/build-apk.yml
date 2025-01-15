@@ -56,7 +56,7 @@ jobs:
     - name: Fix Android project structure for Android Studio
       run: |
         cd app/platforms/android
-        # Asegúrate de que los archivos HTML, CSS y JS estén en la carpeta correcta
+        # Mueve los archivos web a la carpeta correcta
         mkdir -p app/src/main/assets/www
         cp -r ../../../app/www/* app/src/main/assets/www/
         # Limpia archivos innecesarios generados por Cordova
