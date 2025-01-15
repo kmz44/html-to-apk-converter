@@ -51,7 +51,17 @@ jobs:
     - name: Prepare Android project
       run: |
         cd app
-        cordova prepare android --no-build
+        cordova prepare android
+
+    - name: Fix Android project structure for Android Studio
+      run: |
+        cd app/platforms/android
+        # Asegúrate de que los archivos HTML, CSS y JS estén en la carpeta correcta
+        mkdir -p app/src/main/assets/www
+        cp -r ../../../app/www/* app/src/main/assets/www/
+        # Limpia archivos innecesarios generados por Cordova
+        rm -rf cordova
+        rm -rf CordovaLib
 
     - name: Zip Android Studio project
       run: |
