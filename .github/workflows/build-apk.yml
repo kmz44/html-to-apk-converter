@@ -43,9 +43,14 @@ jobs:
 
     - name: Copy files
       run: |
+        mkdir -p app/www
         echo "${{ github.event.inputs.html }}" > app/www/index.html
-        echo "${{ github.event.inputs.css }}" > app/www/styles.css
-        echo "${{ github.event.inputs.js }}" > app/www/script.js
+        if [ -n "${{ github.event.inputs.css }}" ]; then
+          echo "${{ github.event.inputs.css }}" > app/www/styles.css
+        fi
+        if [ -n "${{ github.event.inputs.js }}" ]; then
+          echo "${{ github.event.inputs.js }}" > app/www/script.js
+        fi
         cd app
 
     - name: Prepare Android project
@@ -56,10 +61,8 @@ jobs:
     - name: Fix Android project structure for Android Studio
       run: |
         cd app/platforms/android
-        # Mueve los archivos web a la carpeta correcta
         mkdir -p app/src/main/assets/www
         cp -r ../../../app/www/* app/src/main/assets/www/
-        # Limpia archivos innecesarios generados por Cordova
         rm -rf cordova
         rm -rf CordovaLib
 
