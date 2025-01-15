@@ -46,7 +46,7 @@ jobs:
       run: |
         cordova create app com.example.app App
         cd app
-        cordova platform add android
+        cordova platform add android@latest
 
     - name: Copy files
       run: |
