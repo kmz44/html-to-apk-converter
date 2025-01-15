@@ -59,6 +59,12 @@ jobs:
           }
           EOL
 
+          # gradle.properties
+          cat > AndroidApp/gradle.properties << 'EOL'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOL
+
           # build.gradle.kts de la app
           cat > AndroidApp/app/build.gradle.kts << 'EOL'
           plugins {
