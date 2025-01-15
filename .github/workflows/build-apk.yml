@@ -63,10 +63,13 @@ jobs:
         cd app
         cordova build android --release
         
-    - name: List APK location
+    - name: Debug - List directory structure
       run: |
         cd app
-        find . -name "*.apk" -type f
+        echo "Listing all directories:"
+        ls -R platforms/android
+        echo "Finding APK files:"
+        find platforms/android -name "*.apk"
         
     - name: Create Android Studio project archive
       run: |
@@ -83,4 +86,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: app-release-unsigned
-        path: app/platforms/android/build/outputs/apk/debug/*.apk
+        path: |
+          app/platforms/android/app/build/outputs/apk/**/*.apk
+          app/platforms/android/**/build/outputs/apk/**/*.apk
