@@ -35,6 +35,20 @@ jobs:
     - name: Install Cordova
       run: npm install -g cordova
 
+    - name: Install Android SDK
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends android-sdk
+
+    - name: Set up Android environment variables
+      run: |
+        echo "ANDROID_HOME=/usr/lib/android-sdk" >> $GITHUB_ENV
+        echo "PATH=$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
+
+    - name: Accept Android licenses
+      run: |
+        yes | sdkmanager --licenses
+
     - name: Create Cordova project
       run: |
         cordova create app com.example.app App
