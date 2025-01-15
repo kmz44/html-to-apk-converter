@@ -35,22 +35,11 @@ jobs:
     - name: Install Cordova
       run: npm install -g cordova
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: Accept Android licenses
-      run: |
-        yes | sdkmanager --licenses
-
-    - name: Install Android tools
-      run: |
-        sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
     - name: Create Cordova project
       run: |
         cordova create app com.example.app App
         cd app
-        cordova platform add android@latest
+        cordova platform add android
 
     - name: Copy files
       run: |
@@ -77,28 +66,10 @@ jobs:
         rm -rf cordova
         rm -rf CordovaLib
 
-    - name: Build APK
+    - name: Zip Android Studio project
       run: |
-        cd app
-        cordova build android --release
-
-    - name: Create output folders
-      run: |
-        mkdir -p output/Aquí_está_tu_APK
-        mkdir -p output/Tu_APK_para_modificar
-
-    - name: Copy APK to output folder
-      run: |
-        cp app/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk output/Aquí_está_tu_APK/
-
-    - name: Copy Android Studio project to output folder
-      run: |
-        cp -r app/platforms/android/* output/Tu_APK_para_modificar/
-
-    - name: Zip output folders
-      run: |
-        cd output
-        zip -r ../android-studio-project.zip ./*
+        cd app/platforms/android
+        zip -r ../../../android-studio-project.zip ./*
 
     - name: Upload Android Studio project as artifact
       uses: actions/upload-artifact@v4
