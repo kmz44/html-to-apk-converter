@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Android Studio Project
 
 on:
   workflow_dispatch:
@@ -48,18 +48,24 @@ jobs:
         echo "${{ github.event.inputs.js }}" > app/www/script.js
         cd app
 
-    - name: Build APK
+    - name: Build Android project
       run: |
         cd app
-        cordova build android
+        cordova build android --no-build --verbose
 
-    - name: Zip project folder
+    - name: Prepare Android Studio project
       run: |
-        cd app
-        zip -r ../app.zip ./*
+        cd app/platforms/android
+        ./gradlew wrapper --gradle-version 7.0.2
+        ./gradlew tasks
 
-    - name: Upload ZIP as artifact
+    - name: Zip Android Studio project
+      run: |
+        cd app/platforms/android
+        zip -r ../../../android-studio-project.zip ./*
+
+    - name: Upload Android Studio project as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: app.zip
-        path: app.zip
+        name: android-studio-project.zip
+        path: android-studio-project.zip
