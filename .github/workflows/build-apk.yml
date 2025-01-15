@@ -19,6 +19,12 @@ jobs:
       with:
         node-version: '14'
 
+    - name: Set up Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
     - name: Install Cordova
       run: npm install -g cordova
 
@@ -30,8 +36,8 @@ jobs:
 
     - name: Copy files
       run: |
-        cp -r public/* app/www/
-        cd app
+        cp -r ../public/* app/www/
+        cd ..
 
     - name: Build APK
       run: |
