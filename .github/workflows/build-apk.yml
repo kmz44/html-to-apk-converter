@@ -26,81 +26,72 @@ jobs:
 
       - name: Create Android project
         run: |
-          # Crear estructura del proyecto
-          mkdir -p AndroidApp/app/src/main/assets
-          mkdir -p AndroidApp/app/src/main/java/com/webview/app
-          mkdir -p AndroidApp/app/src/main/res/layout
-          mkdir -p AndroidApp/app/src/main/res/values
+          mkdir -p AndroidApp/app/src/main/{assets,java/com/webview/app,res/layout,res/values}
 
           # Crear archivos web
           echo "${{ github.event.inputs.html }}" > AndroidApp/app/src/main/assets/index.html
           echo "${{ github.event.inputs.css }}" > AndroidApp/app/src/main/assets/styles.css
           echo "${{ github.event.inputs.js }}" > AndroidApp/app/src/main/assets/script.js
 
-          # Crear build.gradle raíz usando la nueva sintaxis
-          cat > AndroidApp/build.gradle << 'EOL'
-          plugins {
-              id 'com.android.application' version '8.1.0' apply false
-          }
-          EOL
-
-          # Crear settings.gradle con los repositorios necesarios
+          # settings.gradle
           cat > AndroidApp/settings.gradle << 'EOL'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
           rootProject.name = 'AndroidApp'
           include ':app'
           EOL
 
-          # Crear build.gradle del módulo app con configuración actualizada
-          cat > AndroidApp/app/build.gradle << 'EOL'
-          plugins {
-              id 'com.android.application'
+          # build.gradle del proyecto
+          cat > AndroidApp/build.gradle << 'EOL'
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:7.3.1'
+              }
           }
 
-          android {
-              namespace 'com.webview.app'
-              compileSdk 34
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOL
 
+          # build.gradle de la app
+          cat > AndroidApp/app/build.gradle << 'EOL'
+          apply plugin: 'com.android.application'
+
+          android {
+              compileSdkVersion 33
+              
               defaultConfig {
                   applicationId "com.webview.app"
-                  minSdk 24
-                  targetSdk 34
+                  minSdkVersion 21
+                  targetSdkVersion 33
                   versionCode 1
                   versionName "1.0"
               }
-
+              
               buildTypes {
                   release {
                       minifyEnabled false
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
+              
               compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
+                  sourceCompatibility JavaVersion.VERSION_11
+                  targetCompatibility JavaVersion.VERSION_11
               }
           }
 
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.11.0'
           }
           EOL
 
-          # Crear MainActivity
+          # MainActivity.java
           cat > AndroidApp/app/src/main/java/com/webview/app/MainActivity.java << 'EOL'
           package com.webview.app;
 
@@ -122,15 +113,14 @@ jobs:
           }
           EOL
 
-          # Crear AndroidManifest.xml
+          # AndroidManifest.xml
           cat > AndroidApp/app/src/main/AndroidManifest.xml << 'EOL'
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.webview.app">
               <application
                   android:allowBackup="true"
-                  android:icon="@mipmap/ic_launcher"
                   android:label="Web App"
-                  android:supportsRtl="true"
                   android:theme="@style/Theme.AppCompat.Light.NoActionBar">
                   <activity
                       android:name=".MainActivity"
@@ -144,24 +134,38 @@ jobs:
           </manifest>
           EOL
 
-          # Crear archivo de recursos
+          # styles.xml
           cat > AndroidApp/app/src/main/res/values/styles.xml << 'EOL'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-              </style>
+              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar" />
           </resources>
           EOL
 
-      - name: Setup Gradle Wrapper
+      - name: Setup Gradle
         run: |
           cd AndroidApp
-          gradle wrapper
-          chmod +x gradlew
+          wget https://services.gradle.org/distributions/gradle-7.3.3-bin.zip
+          unzip gradle-7.3.3-bin.zip
+          mkdir -p gradle/wrapper
+          cp gradle-7.3.3/bin/gradle gradle/wrapper/
+          chmod +x gradle/wrapper/gradle
 
-      - name: Build APK
-        working-directory: AndroidApp
-        run: ./gradlew assembleDebug --stacktrace
+          cat > gradle/wrapper/gradle-wrapper.properties << 'EOL'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-7.3.3-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOL
+
+          echo "org.gradle.jvmargs=-Xmx2048m" > gradle.properties
+
+      - name: Build Debug APK
+        run: |
+          cd AndroidApp
+          chmod +x gradle/wrapper/gradle
+          ./gradle/wrapper/gradle assembleDebug --warning-mode all
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
