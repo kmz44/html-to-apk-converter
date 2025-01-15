@@ -63,18 +63,20 @@ jobs:
         cd app
         cordova build android --release
         
-    - name: Debug - List directory structure
+    - name: Debug - Show directory structure
       run: |
-        cd app
-        echo "Listing all directories:"
-        ls -R platforms/android
-        echo "Finding APK files:"
-        find platforms/android -name "*.apk"
+        cd app/platforms/android
+        echo "====== Current Directory ======"
+        pwd
+        echo "====== Directory Structure ======"
+        ls -R
+        echo "====== Finding APK files ======"
+        find . -name "*.apk"
         
     - name: Create Android Studio project archive
       run: |
-        cd app
-        zip -r ../android-studio-project.zip platforms/android
+        cd app/platforms/android
+        zip -r ../../../android-studio-project.zip .
         
     - name: Upload Android Studio project
       uses: actions/upload-artifact@v4
@@ -82,10 +84,8 @@ jobs:
         name: android-studio-project
         path: android-studio-project.zip
         
-    - name: Upload unsigned APK
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-unsigned
-        path: |
-          app/platforms/android/app/build/outputs/apk/**/*.apk
-          app/platforms/android/**/build/outputs/apk/**/*.apk
+        name: android-apk
+        path: app/platforms/android/ant-build/*.apk
