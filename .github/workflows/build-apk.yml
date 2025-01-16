@@ -100,11 +100,11 @@ jobs:
           android.enableJetifier=true
           EOF
 
-      - name: Construir APK
+      - name: Construir APK (con modo de advertencia)
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
           cordova clean
-          cordova build android --release --verbose
+          cordova build android --release --verbose -- --warning-mode all
         env:
           JAVA_OPTS: '-Xmx4g'
 
