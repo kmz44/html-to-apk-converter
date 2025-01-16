@@ -35,7 +35,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'false'  # Deshabilitar la caché de npm
+          cache: false  # Deshabilitar la caché de npm
 
       # Paso 3: Configurar Java
       - name: Set up Java
@@ -52,22 +52,22 @@ jobs:
       # Paso 5: Crear proyecto Cordova
       - name: Create Cordova project
         run: |
-          cordova create "${{ inputs.app_name || 'MiAplicacion' }}" \
-            "${{ inputs.package_name || 'com.example.miaplicacion' }}" \
-            "${{ inputs.app_name || 'MiAplicacion' }}"
-          cd "${{ inputs.app_name || 'MiAplicacion' }}"
+          cordova create "${{ github.event.inputs.app_name || 'MiAplicacion' }}" \
+            "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
+            "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           cordova platform add android@latest
           cordova requirements
 
       # Paso 6: Copiar el archivo HTML embebido
       - name: Copy embedded HTML file
-        working-directory: ${{ inputs.app_name || 'MiAplicacion' }}/www
+        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/www
         run: |
           echo "${{ github.event.inputs.html }}" > index.html
 
       # Paso 7: Configurar Gradle
       - name: Configure Gradle
-        working-directory: ${{ inputs.app_name || 'MiAplicacion' }}/platforms/android
+        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
         run: |
           echo "org.gradle.jvmargs=-Xmx4g -XX:MaxPermSize=2048m -XX:+HeapDumpOnOutOfMemoryError" >> gradle.properties
           echo "org.gradle.parallel=true" >> gradle.properties
@@ -75,7 +75,7 @@ jobs:
 
       # Paso 8: Construir APK
       - name: Build APK
-        working-directory: ${{ inputs.app_name || 'MiAplicacion' }}
+        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
           cordova build android --release --verbose
         env:
@@ -98,7 +98,7 @@ jobs:
       # Paso 10: Firmar y alinear APK
       - name: Sign and align APK
         run: |
-          APK_PATH=$(find ${{ inputs.app_name || 'MiAplicacion' }}/platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
+          APK_PATH=$(find ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
           
           if [ -z "$APK_PATH" ]; then
             echo "Error: APK not found"
