@@ -85,6 +85,14 @@ jobs:
             echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
           fi
 
+      - name: Verificar existencia de gradlew
+        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
+        run: |
+          if [ ! -f gradlew ]; then
+            echo "Error: El archivo gradlew no existe en la ruta esperada."
+            exit 1
+          fi
+
       - name: Otorgar permisos de ejecución a gradlew
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
         run: |
