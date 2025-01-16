@@ -26,6 +26,8 @@ on:
 env:
   NODE_VERSION: '20.11.1'
   JAVA_VERSION: '17.0.10'
+  ANDROID_SDK_VERSION: '33'
+  GRADLE_VERSION: '8.0.2'
 
 jobs:
   build:
@@ -48,19 +50,19 @@ jobs:
       - name: Configurar el SDK de Android
         uses: android-actions/setup-android@v3
         with:
-          android-sdk: "33"  # Instala el SDK de Android 33
-          accept-licenses: true  # Acepta las licencias automáticamente
+          android-sdk: ${{ env.ANDROID_SDK_VERSION }}
+          accept-licenses: true
 
       - name: Instalar la plataforma del SDK de Android
         run: |
-          echo "Instalando la plataforma del SDK de Android (android-33)..."
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-33"
+          echo "Instalando la plataforma del SDK de Android (android-${{ env.ANDROID_SDK_VERSION }})..."
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}"
 
       - name: Instalar Cordova y dependencias globales
         run: |
-          npm install -g cordova@12.0.0 
-          npm install -g native-run@2.0.0 
-          npm install -g cordova-res@0.15.4
+          npm install -g cordova@latest
+          npm install -g native-run@latest
+          npm install -g cordova-res@latest
           cordova --version
 
       - name: Crear proyecto Cordova
@@ -69,7 +71,7 @@ jobs:
             "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
             "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          cordova platform add android@12.0.1
+          cordova platform add android@latest
           cordova requirements
 
       - name: Configurar ajustes del proyecto
@@ -79,32 +81,28 @@ jobs:
           sed -i "s/<platform name=\"android\">/<platform name=\"android\">\n        <preference name=\"android-targetSdkVersion\" value=\"${{ github.event.inputs.android_target }}\"\/>/g" config.xml
           sed -i "/<platform name=\"android\">/a \        <preference name=\"AndroidXEnabled\" value=\"true\"\/>" config.xml
 
-      - name: Copiar archivo HTML embebido
-        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/www
-        run: |
-          echo "${{ github.event.inputs.html }}" > index.html
-          if [ ! -s index.html ]; then
-            echo "Error: index.html está vacío"
-            exit 1
+          # Crear archivo gradle-wrapper.properties si no existe
+          if [ ! -f platforms/android/gradle/wrapper/gradle-wrapper.properties ]; then
+            mkdir -p platforms/android/gradle/wrapper
+            cat << EOF > platforms/android/gradle/wrapper/gradle-wrapper.properties
+            distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip
+            EOF
           fi
 
-      - name: Configurar Gradle
-        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
+      - name: Otorgar permisos de ejecución a gradlew
+        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
         run: |
-          mkdir -p platforms/android
-          cat << EOF > platforms/android/gradle.properties
-          org.gradle.jvmargs=-Xmx4g -XX:+HeapDumpOnOutOfMemoryError
-          org.gradle.parallel=true
-          org.gradle.daemon=false
-          android.useAndroidX=true
-          android.enableJetifier=true
-          EOF
+          chmod +x gradlew
 
-      - name: Construir APK (con modo de advertencia)
+      - name: Limpiar proyecto (con modo de depuración)
+        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
+        run: |
+          ./gradlew clean --stacktrace
+
+      - name: Construir APK (con modo de depuración)
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
-          cordova clean
-          cordova build android --release --verbose -- --warning-mode all
+          cordova build android --release --verbose -- --stacktrace
         env:
           JAVA_OPTS: '-Xmx4g'
 
