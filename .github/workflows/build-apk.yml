@@ -82,9 +82,7 @@ jobs:
           # Crear archivo gradle-wrapper.properties si no existe
           if [ ! -f platforms/android/gradle/wrapper/gradle-wrapper.properties ]; then
             mkdir -p platforms/android/gradle/wrapper
-            cat <<EOF > platforms/android/gradle/wrapper/gradle-wrapper.properties
-distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip
-EOF
+            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
           fi
 
       - name: Otorgar permisos de ejecución a gradlew
