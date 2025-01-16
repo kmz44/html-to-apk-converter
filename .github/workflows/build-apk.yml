@@ -50,18 +50,17 @@ jobs:
       - name: Configurar el SDK de Android
         uses: android-actions/setup-android@v3
         with:
-          android-sdk: ${{ env.ANDROID_SDK_VERSION }}
+          api-level: ${{ env.ANDROID_SDK_VERSION }}
           accept-licenses: true
 
-      - name: Instalar la plataforma del SDK de Android
+      - name: Instalar herramientas de compilación de Android
         run: |
-          echo "Instalando la plataforma del SDK de Android (android-${{ env.ANDROID_SDK_VERSION }})..."
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}"
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "build-tools;30.0.3"
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
+          echo "Instalando herramientas de compilación de Android..."
+          yes | sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}" "build-tools;${{ env.ANDROID_SDK_VERSION }}" --licenses
 
       - name: Instalar Gradle
         run: |
+          echo "Instalando Gradle..."
           wget https://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip
           unzip gradle-${{ env.GRADLE_VERSION }}-bin.zip
           export PATH=$PATH:$PWD/gradle-${{ env.GRADLE_VERSION }}/bin
@@ -69,90 +68,34 @@ jobs:
 
       - name: Instalar Cordova y dependencias globales
         run: |
+          echo "Instalando Cordova y dependencias globales..."
           npm install -g cordova@latest native-run@latest cordova-res@latest
           cordova --version
 
-      - name: Preparar proyecto Cordova
+      - name: Crear y preparar proyecto Cordova
         run: |
-          # Crear el proyecto Cordova
-          cordova create "${{ github.event.inputs.app_name || 'MiAplicacion' }}" \
-            "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
-            "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          
-          # Cambiar al directorio del proyecto
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          
-          # Agregar plataforma Android con verbose
+          echo "Creando proyecto Cordova..."
+          cordova create "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}" "${{ github.event.inputs.app_name }}"
+          cd "${{ github.event.inputs.app_name }}"
           echo "Agregando plataforma Android..."
           cordova platform add android@latest --verbose
-          
-          # Verificar la estructura del directorio
-          echo "Contenido del directorio platforms/android:"
-          ls -la platforms/android/
+          echo "Copiando contenido HTML proporcionado..."
+          echo "${{ github.event.inputs.html }}" > www/index.html
+          echo "Instalando dependencias del proyecto..."
+          npm install
 
       - name: Configurar Gradle
         run: |
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          
-          # Crear directorio gradle si no existe
+          cd "${{ github.event.inputs.app_name }}"
+          echo "Configurando Gradle..."
           mkdir -p platforms/android/gradle/wrapper
-          
-          # Crear gradle-wrapper.properties si no existe
-          if [ ! -f platforms/android/gradle/wrapper/gradle-wrapper.properties ]; then
-            echo "Creando gradle-wrapper.properties..."
-            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
-          fi
-          
-          # Crear build.gradle si no existe
-          if [ ! -f platforms/android/build.gradle ]; then
-            echo "Creando build.gradle..."
-            cat <<EOL > platforms/android/build.gradle
-plugins {
-    id 'com.android.application'
-}
-
-android {
-    compileSdkVersion ${{ env.ANDROID_SDK_VERSION }}
-    defaultConfig {
-        applicationId "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}"
-        minSdkVersion 16
-        targetSdkVersion ${{ env.ANDROID_SDK_VERSION }}
-        versionCode 1
-        versionName "1.0"
-    }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-}
-
-dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-}
-EOL
-          fi
-          
-          # Generar gradlew si no existe
-          if [ ! -f platforms/android/gradlew ]; then
-            echo "Generando gradlew..."
-            cd platforms/android
-            gradle wrapper
-            cd ../..
-          fi
-          
-          # Dar permisos de ejecución a gradlew
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
           chmod +x platforms/android/gradlew
 
       - name: Construir APK
         run: |
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          # Mostrar versión de gradle
-          ./platforms/android/gradlew --version
-          
-          # Limpiar y construir
+          cd "${{ github.event.inputs.app_name }}"
+          echo "Limpiando y construyendo el proyecto..."
           ./platforms/android/gradlew clean --stacktrace
           cordova build android --release --verbose -- --stacktrace
         env:
@@ -160,11 +103,8 @@ EOL
 
       - name: Configurar keystore
         run: |
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          if [ -z "${{ secrets.KEYSTORE }}" ]; then
-            echo "Error: El secreto KEYSTORE no está configurado"
-            exit 1
-          fi
+          cd "${{ github.event.inputs.app_name }}"
+          echo "Configurando keystore..."
           echo "${{ secrets.KEYSTORE }}" | base64 -d > my-release-key.jks
           if [ ! -f my-release-key.jks ]; then
             echo "Error: No se pudo crear el archivo keystore"
@@ -173,34 +113,23 @@ EOL
 
       - name: Firmar y alinear APK
         run: |
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          cd "${{ github.event.inputs.app_name }}"
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
-          
           if [ -z "$APK_PATH" ]; then
             echo "Error: No se encontró el APK"
             exit 1
           fi
-          
-          echo "APK encontrado en: $APK_PATH"
-          
-          # Firmar APK
-          jarsigner -verbose \
-            -sigalg SHA256withRSA \
-            -digestalg SHA-256 \
-            -keystore my-release-key.jks \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-            -keypass "${{ secrets.KEY_PASSWORD }}" \
-            "$APK_PATH" \
-            "${{ secrets.KEY_ALIAS || 'alias_name' }}"
-          
-          # Alinear y verificar
+          echo "Firmando APK..."
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore my-release-key.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -keypass "${{ secrets.KEY_PASSWORD }}" "$APK_PATH" "${{ secrets.KEY_ALIAS }}"
           SIGNED_APK="app-release-signed.apk"
-          ${ANDROID_HOME}/build-tools/30.0.3/zipalign -v 4 "$APK_PATH" "$SIGNED_APK"
-          ${ANDROID_HOME}/build-tools/30.0.3/apksigner verify --verbose "$SIGNED_APK"
+          echo "Alineando APK..."
+          ${ANDROID_HOME}/build-tools/${{ env.ANDROID_SDK_VERSION }}/zipalign -v 4 "$APK_PATH" "$SIGNED_APK"
+          echo "Verificando APK alineado..."
+          ${ANDROID_HOME}/build-tools/${{ env.ANDROID_SDK_VERSION }}/apksigner verify --verbose "$SIGNED_APK"
 
       - name: Subir APK firmada
         uses: actions/upload-artifact@v4
         with:
           name: signed-apk
-          path: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/app-release-signed.apk
+          path: ${{ github.event.inputs.app_name }}/app-release-signed.apk
           retention-days: 7
