@@ -57,6 +57,15 @@ jobs:
         run: |
           echo "Instalando la plataforma del SDK de Android (android-${{ env.ANDROID_SDK_VERSION }})..."
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}"
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "build-tools;30.0.3"
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Instalar Gradle
+        run: |
+          wget https://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip
+          unzip gradle-${{ env.GRADLE_VERSION }}-bin.zip
+          export PATH=$PATH:$PWD/gradle-${{ env.GRADLE_VERSION }}/bin
+          gradle --version
 
       - name: Instalar Cordova y dependencias globales
         run: |
@@ -73,63 +82,79 @@ jobs:
           # Cambiar al directorio del proyecto
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           
-          # Agregar la plataforma Android
+          # Agregar plataforma Android con verbose
           echo "Agregando plataforma Android..."
-          cordova platform add android@latest
+          cordova platform add android@latest --verbose
           
-          # Verificar que la plataforma se agregó correctamente
-          if [ ! -d platforms/android ]; then
-            echo "Error: La plataforma Android no se agregó correctamente"
-            exit 1
-          fi
-
-          # Verificar que gradlew existe
+          # Verificar la estructura del directorio
+          echo "Contenido del directorio platforms/android:"
+          ls -la platforms/android/
+          
+          # Generar gradlew si no existe
           if [ ! -f platforms/android/gradlew ]; then
-            echo "Error: No se encontró el archivo gradlew"
-            ls -la platforms/android/
+            echo "Generando gradlew..."
+            cd platforms/android
+            gradle wrapper
+            cd ../..
+          fi
+          
+          # Verificar que gradlew se creó
+          if [ ! -f platforms/android/gradlew ]; then
+            echo "Error: No se pudo generar gradlew"
             exit 1
           fi
           
-          # Dar permisos de ejecución a gradlew
+          # Dar permisos de ejecución
           chmod +x platforms/android/gradlew
           
-          # Verificar requisitos
-          cordova requirements
+          # Verificar requisitos con verbose
+          cordova requirements --verbose
 
-      - name: Configurar ajustes del proyecto
+      - name: Configurar build.gradle
         run: |
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          
-          # Actualizar config.xml
-          sed -i "s/<platform name=\"android\">/<platform name=\"android\">\n        <preference name=\"android-targetSdkVersion\" value=\"${{ github.event.inputs.android_target }}\"\/>/g" config.xml
-          sed -i "/<platform name=\"android\">/a \        <preference name=\"AndroidXEnabled\" value=\"true\"\/>" config.xml
-
-          # Configurar gradle-wrapper.properties
+          # Asegurar que el directorio gradle existe
           mkdir -p platforms/android/gradle/wrapper
+          
+          # Crear gradle-wrapper.properties
           echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
+          
+          # Configurar build.gradle si es necesario
+          if [ -f platforms/android/build.gradle ]; then
+            echo "Configurando build.gradle..."
+            sed -i 's/gradle-[0-9.]\+/gradle-${{ env.GRADLE_VERSION }}/g' platforms/android/build.gradle
+          fi
 
       - name: Construir APK
         run: |
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          # Limpiar primero
+          # Mostrar versión de gradle
+          ./platforms/android/gradlew --version
+          
+          # Limpiar y construir
           ./platforms/android/gradlew clean --stacktrace
-          # Construir APK
           cordova build android --release --verbose -- --stacktrace
         env:
           JAVA_OPTS: '-Xmx4g'
 
-      - name: Configurar y firmar APK
+      - name: Configurar keystore
         run: |
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          # Configurar keystore
           if [ -z "${{ secrets.KEYSTORE }}" ]; then
             echo "Error: El secreto KEYSTORE no está configurado"
             exit 1
           fi
           echo "${{ secrets.KEYSTORE }}" | base64 -d > my-release-key.jks
-          
-          # Encontrar y firmar APK
+          if [ ! -f my-release-key.jks ]; then
+            echo "Error: No se pudo crear el archivo keystore"
+            exit 1
+          fi
+
+      - name: Firmar y alinear APK
+        run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
+          
           if [ -z "$APK_PATH" ]; then
             echo "Error: No se encontró el APK"
             exit 1
@@ -149,8 +174,8 @@ jobs:
           
           # Alinear y verificar
           SIGNED_APK="app-release-signed.apk"
-          ${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools | sort -V | tail -1)/zipalign -v 4 "$APK_PATH" "$SIGNED_APK"
-          ${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools | sort -V | tail -1)/apksigner verify --verbose "$SIGNED_APK"
+          ${ANDROID_HOME}/build-tools/30.0.3/zipalign -v 4 "$APK_PATH" "$SIGNED_APK"
+          ${ANDROID_HOME}/build-tools/30.0.3/apksigner verify --verbose "$SIGNED_APK"
 
       - name: Subir APK firmada
         uses: actions/upload-artifact@v4
