@@ -30,12 +30,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Paso 2: Configurar Node.js
+      # Paso 2: Configurar Node.js (sin caché de npm)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: 'false'  # Deshabilitar la caché de npm
 
       # Paso 3: Configurar Java
       - name: Set up Java
@@ -44,7 +44,7 @@ jobs:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
 
-      # Paso 4: Instalar Cordova y dependencias
+      # Paso 4: Instalar Cordova y dependencias globales
       - name: Install Cordova and dependencies
         run: |
           npm install -g cordova native-run cordova-res @ionic/cli
