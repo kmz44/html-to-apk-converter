@@ -4,23 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       html:
-        description: 'HTML content with embedded CSS and JS'
+        description: 'Contenido HTML con CSS y JS embebidos'
         required: true
         type: string
       app_name:
-        description: 'Application name'
+        description: 'Nombre de la aplicación'
         required: false
         default: 'MiAplicacion'
         type: string
       package_name:
-        description: 'Package name'
+        description: 'Nombre del paquete'
         required: false
         default: 'com.example.miaplicacion'
         type: string
       android_target:
-        description: 'Android target SDK version'
+        description: 'Versión del SDK objetivo de Android'
         required: false
-        default: '34'
+        default: '33'
         type: string
 
 env:
@@ -31,34 +31,34 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout del repositorio
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Set up Java
+      - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Set up Android SDK
+      - name: Configurar el SDK de Android
         uses: android-actions/setup-android@v3
         with:
-          android-sdk: "34"
-          accept-licenses: true
+          android-sdk: "33"  # Instala el SDK de Android 33
+          accept-licenses: true  # Acepta las licencias automáticamente
 
-      - name: Install Cordova and dependencies
+      - name: Instalar Cordova y dependencias globales
         run: |
           npm install -g cordova@12.0.0 
           npm install -g native-run@2.0.0 
           npm install -g cordova-res@0.15.4
           cordova --version
 
-      - name: Create Cordova project
+      - name: Crear proyecto Cordova
         run: |
           cordova create "${{ github.event.inputs.app_name || 'MiAplicacion' }}" \
             "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
@@ -67,14 +67,14 @@ jobs:
           cordova platform add android@12.0.1
           cordova requirements
 
-      - name: Configure project settings
+      - name: Configurar ajustes del proyecto
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
           # Actualizar config.xml
           sed -i "s/<platform name=\"android\">/<platform name=\"android\">\n        <preference name=\"android-targetSdkVersion\" value=\"${{ github.event.inputs.android_target }}\"\/>/g" config.xml
           sed -i "/<platform name=\"android\">/a \        <preference name=\"AndroidXEnabled\" value=\"true\"\/>" config.xml
 
-      - name: Copy embedded HTML file
+      - name: Copiar archivo HTML embebido
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/www
         run: |
           echo "${{ github.event.inputs.html }}" > index.html
@@ -83,7 +83,7 @@ jobs:
             exit 1
           fi
 
-      - name: Configure Gradle
+      - name: Configurar Gradle
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
           mkdir -p platforms/android
@@ -95,7 +95,7 @@ jobs:
           android.enableJetifier=true
           EOF
 
-      - name: Build APK
+      - name: Construir APK
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
           cordova clean
@@ -103,28 +103,28 @@ jobs:
         env:
           JAVA_OPTS: '-Xmx4g'
 
-      - name: Setup keystore
+      - name: Configurar keystore
         run: |
           if [ -z "${{ secrets.KEYSTORE }}" ]; then
-            echo "Error: KEYSTORE secret is not set"
+            echo "Error: El secreto KEYSTORE no está configurado"
             exit 1
           fi
           echo "${{ secrets.KEYSTORE }}" | base64 -d > my-release-key.jks
           if [ ! -f my-release-key.jks ]; then
-            echo "Error: Failed to create keystore file"
+            echo "Error: No se pudo crear el archivo keystore"
             exit 1
           fi
 
-      - name: Sign and align APK
+      - name: Firmar y alinear APK
         run: |
           APK_PATH=$(find ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
           
           if [ -z "$APK_PATH" ]; then
-            echo "Error: APK not found"
+            echo "Error: No se encontró el APK"
             exit 1
           fi
           
-          echo "Found APK at: $APK_PATH"
+          echo "APK encontrado en: $APK_PATH"
           
           jarsigner -verbose \
             -sigalg SHA256withRSA \
@@ -139,7 +139,7 @@ jobs:
           ${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools | sort -V | tail -1)/zipalign -v 4 "$APK_PATH" "$SIGNED_APK"
           ${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools | sort -V | tail -1)/apksigner verify --verbose "$SIGNED_APK"
 
-      - name: Upload signed APK
+      - name: Subir APK firmada
         uses: actions/upload-artifact@v4
         with:
           name: signed-apk
