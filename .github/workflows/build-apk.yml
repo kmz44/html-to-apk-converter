@@ -26,7 +26,6 @@ on:
 env:
   NODE_VERSION: '20.11.1'
   JAVA_VERSION: '17.0.10'
-  GRADLE_VERSION: '8.6'
 
 jobs:
   build:
@@ -34,34 +33,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          check-latest: true
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
-          cache: 'gradle'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: ${{ env.GRADLE_VERSION }}
 
       - name: Install Cordova and dependencies
         run: |
-          npm install -g cordova@12.0.0 native-run@2.0.0 cordova-res@0.15.4 @ionic/cli@7.2.0
+          npm install -g cordova@12.0.0 
+          npm install -g native-run@2.0.0 
+          npm install -g cordova-res@0.15.4
           cordova --version
-          native-run --version
-          cordova-res --version
-          ionic --version
 
       - name: Create Cordova project
         run: |
@@ -69,43 +58,33 @@ jobs:
             "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
             "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          
-          # Agregar plataforma Android con versión específica
           cordova platform add android@12.0.1
-          
-          # Verificar requisitos
           cordova requirements
 
       - name: Configure project settings
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
-          # Actualizar config.xml con la versión SDK objetivo
+          # Actualizar config.xml
           sed -i "s/<platform name=\"android\">/<platform name=\"android\">\n        <preference name=\"android-targetSdkVersion\" value=\"${{ inputs.android_target }}\"\/>/g" config.xml
-          
-          # Agregar permisos necesarios
           sed -i "/<platform name=\"android\">/a \        <preference name=\"AndroidXEnabled\" value=\"true\"\/>" config.xml
 
       - name: Copy embedded HTML file
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/www
         run: |
-          # Hacer backup del index.html original
-          mv index.html index.html.bak
-          # Crear nuevo index.html con el contenido proporcionado
           echo "${{ github.event.inputs.html }}" > index.html
-          # Verificar que el archivo se creó correctamente
           if [ ! -s index.html ]; then
             echo "Error: index.html está vacío"
             exit 1
           fi
 
       - name: Configure Gradle
-        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
+        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
-          cat << EOF >> gradle.properties
+          mkdir -p platforms/android
+          cat << EOF > platforms/android/gradle.properties
           org.gradle.jvmargs=-Xmx4g -XX:MaxPermSize=2048m -XX:+HeapDumpOnOutOfMemoryError
           org.gradle.parallel=true
-          org.gradle.daemon=true
-          org.gradle.caching=true
+          org.gradle.daemon=false
           android.useAndroidX=true
           android.enableJetifier=true
           EOF
@@ -114,10 +93,9 @@ jobs:
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
           cordova clean
-          cordova build android --release --verbose -- --gradleArg=-PcdvBuildMultipleApks=false
+          cordova build android --release --verbose
         env:
           JAVA_OPTS: '-Xmx4g'
-          GRADLE_OPTS: '-Dorg.gradle.daemon=false'
 
       - name: Setup keystore
         run: |
@@ -126,14 +104,10 @@ jobs:
             exit 1
           fi
           echo "${{ secrets.KEYSTORE }}" | base64 -d > my-release-key.jks
-          
           if [ ! -f my-release-key.jks ]; then
             echo "Error: Failed to create keystore file"
             exit 1
           fi
-          
-          # Verificar integridad del keystore
-          keytool -list -v -keystore my-release-key.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" > /dev/null
 
       - name: Sign and align APK
         run: |
@@ -146,7 +120,6 @@ jobs:
           
           echo "Found APK at: $APK_PATH"
           
-          # Firmar APK
           jarsigner -verbose \
             -sigalg SHA256withRSA \
             -digestalg SHA-256 \
@@ -157,11 +130,7 @@ jobs:
             "${{ secrets.KEY_ALIAS || 'alias_name' }}"
           
           SIGNED_APK="app-release-signed.apk"
-          
-          # Alinear APK
           ${ANDROID_HOME}/build-tools/34.0.0/zipalign -v 4 "$APK_PATH" "$SIGNED_APK"
-          
-          # Verificar firma
           ${ANDROID_HOME}/build-tools/34.0.0/apksigner verify --verbose "$SIGNED_APK"
 
       - name: Upload signed APK
@@ -170,4 +139,3 @@ jobs:
           name: signed-apk
           path: app-release-signed.apk
           retention-days: 7
-          compression-level: 9
