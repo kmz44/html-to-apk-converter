@@ -10,12 +10,12 @@ on:
       app_name:
         description: 'Nombre de la aplicación'
         required: false
-        default: 'MiAplicacion'
+        default: '3EnRaya'
         type: string
       package_name:
         description: 'Nombre del paquete'
         required: false
-        default: 'com.example.miaplicacion'
+        default: 'com.example.tresenraya'
         type: string
 
 env:
