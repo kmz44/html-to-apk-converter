@@ -107,32 +107,32 @@ jobs:
           if [ ! -f platforms/android/build.gradle ]; then
             echo "Creando build.gradle..."
             cat <<EOL > platforms/android/build.gradle
-plugins {
-    id 'com.android.application'
-}
+            plugins {
+                id 'com.android.application'
+            }
 
-android {
-    compileSdkVersion ${{ env.ANDROID_SDK_VERSION }}
-    defaultConfig {
-        applicationId "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}"
-        minSdkVersion 16
-        targetSdkVersion ${{ env.ANDROID_SDK_VERSION }}
-        versionCode 1
-        versionName "1.0"
-    }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-}
+            android {
+                compileSdkVersion ${{ env.ANDROID_SDK_VERSION }}
+                defaultConfig {
+                    applicationId "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}"
+                    minSdkVersion 16
+                    targetSdkVersion ${{ env.ANDROID_SDK_VERSION }}
+                    versionCode 1
+                    versionName "1.0"
+                }
+                buildTypes {
+                    release {
+                        minifyEnabled false
+                        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                    }
+                }
+            }
 
-dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-}
-EOL
+            dependencies {
+                implementation fileTree(dir: 'libs', include: ['*.jar'])
+                implementation 'com.android.support:appcompat-v7:28.0.0'
+            }
+            EOL
           fi
           
           # Generar gradlew si no existe
