@@ -70,10 +70,8 @@ jobs:
             "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
             "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           
-          # Cambiar al directorio del proyecto
+          # Cambiar al directorio del proyecto y verificar
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          
-          # Verificar que el proyecto se creó correctamente
           if [ ! -f config.xml ]; then
             echo "Error: El proyecto Cordova no se creó correctamente."
             exit 1
@@ -81,6 +79,9 @@ jobs:
 
       - name: Agregar plataforma Android
         run: |
+          # Asegurar que estamos en el directorio correcto
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          
           echo "Agregando plataforma Android..."
           cordova platform add android@latest
           
@@ -96,10 +97,12 @@ jobs:
 
       - name: Verificar requisitos de Cordova
         run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           cordova requirements
 
       - name: Configurar ajustes del proyecto
         run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           # Actualizar config.xml
           sed -i "s/<platform name=\"android\">/<platform name=\"android\">\n        <preference name=\"android-targetSdkVersion\" value=\"${{ github.event.inputs.android_target }}\"\/>/g" config.xml
           sed -i "/<platform name=\"android\">/a \        <preference name=\"AndroidXEnabled\" value=\"true\"\/>" config.xml
@@ -112,20 +115,24 @@ jobs:
 
       - name: Otorgar permisos de ejecución a gradlew
         run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           chmod +x platforms/android/gradlew
 
-      - name: Limpiar proyecto (con modo de depuración)
+      - name: Limpiar proyecto
         run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           ./platforms/android/gradlew clean --stacktrace
 
-      - name: Construir APK (con modo de depuración)
+      - name: Construir APK
         run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           cordova build android --release --verbose -- --stacktrace
         env:
           JAVA_OPTS: '-Xmx4g'
 
       - name: Configurar keystore
         run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           if [ -z "${{ secrets.KEYSTORE }}" ]; then
             echo "Error: El secreto KEYSTORE no está configurado"
             exit 1
@@ -138,6 +145,7 @@ jobs:
 
       - name: Firmar y alinear APK
         run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
           
           if [ -z "$APK_PATH" ]; then
@@ -164,5 +172,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: signed-apk
-          path: app-release-signed.apk
+          path: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/app-release-signed.apk
           retention-days: 7
