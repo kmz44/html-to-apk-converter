@@ -69,15 +69,24 @@ jobs:
             "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
             "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          cordova platform add android@latest
-          cordova requirements
 
-      - name: Verificar existencia de la plataforma Android
+      - name: Agregar plataforma Android
         run: |
+          echo "Agregando plataforma Android..."
+          cordova platform add android@latest
+          echo "Verificando la existencia de la plataforma Android..."
           if [ ! -d platforms/android ]; then
             echo "Error: La plataforma Android no se ha agregado correctamente."
+            echo "Listando el contenido del directorio actual:"
+            ls -la
+            echo "Listando el contenido del directorio platforms:"
+            ls -la platforms
             exit 1
           fi
+
+      - name: Verificar requisitos de Cordova
+        run: |
+          cordova requirements
 
       - name: Configurar ajustes del proyecto
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
@@ -90,14 +99,6 @@ jobs:
           if [ ! -f platforms/android/gradle/wrapper/gradle-wrapper.properties ]; then
             mkdir -p platforms/android/gradle/wrapper
             echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
-          fi
-
-      - name: Verificar existencia de gradlew
-        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
-        run: |
-          if [ ! -f gradlew ]; then
-            echo "Error: El archivo gradlew no existe en la ruta esperada."
-            exit 1
           fi
 
       - name: Otorgar permisos de ejecución a gradlew
