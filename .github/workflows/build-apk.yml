@@ -72,6 +72,13 @@ jobs:
           cordova platform add android@latest
           cordova requirements
 
+      - name: Verificar existencia de la plataforma Android
+        run: |
+          if [ ! -d platforms/android ]; then
+            echo "Error: La plataforma Android no se ha agregado correctamente."
+            exit 1
+          fi
+
       - name: Configurar ajustes del proyecto
         working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
