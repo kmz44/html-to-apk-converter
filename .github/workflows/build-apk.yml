@@ -76,7 +76,7 @@ jobs:
           echo "Instalando Capacitor..."
           npm install -g @capacitor/cli @capacitor/core
           
-          # Inicializar el proyecto de Capacitor usando npm
+          # Inicializar el proyecto de Capacitor
           npm exec -- cap init "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}"
           
           # Crear directorio www si no existe
@@ -94,7 +94,10 @@ jobs:
             rm -rf android
           fi
           
-          # Agregar la plataforma Android usando npm
+          # Instalar la plataforma Android
+          npm install @capacitor/android
+          
+          # Agregar la plataforma Android
           npm exec -- cap add android
 
       - name: Construir APK
