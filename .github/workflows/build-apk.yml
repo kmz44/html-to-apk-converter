@@ -1,19 +1,18 @@
 name: Build Debug APK with Capacitor
-
 on:
   workflow_dispatch:
     inputs:
       html:
-        description: 'Contenido HTML con CSS y JS embebidos'
+        description: 'HTML content with embedded CSS and JS'
         required: true
         type: string
       app_name:
-        description: 'Nombre de la aplicación'
+        description: 'Application name'
         required: false
         default: '3EnRaya'
         type: string
       package_name:
-        description: 'Nombre del paquete'
+        description: 'Package name'
         required: false
         default: 'com.example.tresenraya'
         type: string
@@ -28,85 +27,105 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del repositorio
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Crear package.json si no existe
+      - name: Create base project structure
         run: |
-          if [ ! -f package.json ]; then
-            echo "Creando package.json..."
-            echo '{
-              "name": "html-to-apk-converter",
-              "version": "1.0.0",
-              "description": "Convierte HTML en APK usando Capacitor",
-              "main": "index.js",
-              "scripts": {
-                "test": "echo \"Error: no test specified\" && exit 1"
-              },
-              "author": "",
-              "license": "MIT"
-            }' > package.json
-          fi
+          # Create package.json
+          echo '{
+            "name": "html-to-apk-converter",
+            "version": "1.0.0",
+            "description": "Converts HTML into APK using Capacitor",
+            "main": "index.js",
+            "scripts": {
+              "build": "echo \"No build step required\"",
+              "cap.add": "cap add android",
+              "cap.build": "cd android && ./gradlew assembleDebug --stacktrace"
+            },
+            "dependencies": {
+              "@capacitor/android": "^5.7.0",
+              "@capacitor/core": "^5.7.0"
+            },
+            "devDependencies": {
+              "@capacitor/cli": "^5.7.0"
+            },
+            "author": "",
+            "license": "MIT"
+          }' > package.json
+          
+          # Install dependencies
+          npm install
 
-      - name: Configurar Java
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Configurar el SDK de Android
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-level: ${{ env.ANDROID_SDK_VERSION }}
           accept-licenses: true
 
-      - name: Instalar herramientas de compilación de Android
+      - name: Install Android build tools
         run: |
-          echo "Instalando herramientas de compilación de Android..."
-          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
           ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}" "build-tools;${{ env.ANDROID_SDK_VERSION }}.0.0"
 
-      - name: Instalar Capacitor y dependencias
+      - name: Setup Capacitor project
         run: |
-          echo "Instalando Capacitor..."
-          npm install -g @capacitor/cli @capacitor/core
-          
-          # Inicializar el proyecto de Capacitor
-          npm exec -- cap init "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}"
-          
-          # Crear directorio www si no existe
+          # Create www directory
           mkdir -p www
           
-          # Escribir el contenido HTML en www/index.html
-          echo "${{ github.event.inputs.html }}" > www/index.html
+          # Create index.html with proper content encoding
+          echo '${{ github.event.inputs.html }}' | base64 --decode > www/index.html || echo '${{ github.event.inputs.html }}' > www/index.html
           
-          # Instalar dependencias
-          npm install
+          # Initialize Capacitor project
+          npx cap init "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}" --web-dir="www"
           
-          # Eliminar el directorio android si existe
-          if [ -d "android" ]; then
-            echo "Eliminando directorio android existente..."
-            rm -rf android
-          fi
+          # Create capacitor.config.ts with additional configurations
+          echo '{
+            "appId": "${{ github.event.inputs.package_name }}",
+            "appName": "${{ github.event.inputs.app_name }}",
+            "webDir": "www",
+            "bundledWebRuntime": false,
+            "server": {
+              "androidScheme": "http",
+              "cleartext": true
+            },
+            "android": {
+              "buildOptions": {
+                "keystorePath": "release.keystore",
+                "keystorePassword": "android",
+                "keystoreAlias": "androidalias",
+                "keystoreAliasPassword": "android"
+              }
+            }
+          }' > capacitor.config.json
           
-          # Instalar la plataforma Android
-          npm install @capacitor/android
+          # Remove existing android directory if present
+          rm -rf android
           
-          # Agregar la plataforma Android
-          npm exec -- cap add android
+          # Add Android platform
+          npx cap add android
+          
+          # Update Android configuration
+          npx cap sync android
 
-      - name: Construir APK de depuración
+      - name: Build debug APK
         run: |
-          echo "Construyendo APK de depuración..."
           cd android
+          chmod +x gradlew
           ./gradlew clean assembleDebug --stacktrace
 
-      - name: Subir APK de depuración
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
