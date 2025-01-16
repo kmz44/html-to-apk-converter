@@ -51,7 +51,8 @@ jobs:
       - name: Instalar herramientas de compilación de Android
         run: |
           echo "Instalando herramientas de compilación de Android..."
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}" "build-tools;${{ env.ANDROID_SDK_VERSION }}.0.0" --licenses
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}" "build-tools;${{ env.ANDROID_SDK_VERSION }}.0.0"
 
       - name: Instalar Capacitor y dependencias
         run: |
