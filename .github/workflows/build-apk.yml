@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK with Cordova
 
 on:
   workflow_dispatch:
@@ -19,175 +19,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          node-version: '18'
 
-      - name: Create Android project
+      - name: Install Cordova
         run: |
-          mkdir -p AndroidApp/app/src/main/{assets,java/com/webview/app,res/layout,res/values}
+          npm install -g cordova
 
-          # Crear archivos web
-          echo "${{ github.event.inputs.html }}" > AndroidApp/app/src/main/assets/index.html
-          echo "${{ github.event.inputs.css }}" > AndroidApp/app/src/main/assets/styles.css
-          echo "${{ github.event.inputs.js }}" > AndroidApp/app/src/main/assets/script.js
-
-          # settings.gradle.kts
-          cat > AndroidApp/settings.gradle.kts << 'EOL'
-          rootProject.name = "AndroidApp"
-          include(":app")
-          EOL
-
-          # build.gradle.kts del proyecto
-          cat > AndroidApp/build.gradle.kts << 'EOL'
-          buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath("com.android.tools.build:gradle:8.2.0")
-              }
-          }
-
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-
-              configurations.all {
-                  resolutionStrategy {
-                      force("org.jetbrains.kotlin:kotlin-stdlib:1.8.22")
-                      force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22")
-                      force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22")
-                  }
-              }
-          }
-          EOL
-
-          # gradle.properties
-          cat > AndroidApp/gradle.properties << 'EOL'
-          android.useAndroidX=true
-          android.enableJetifier=true
-          EOL
-
-          # build.gradle.kts de la app
-          cat > AndroidApp/app/build.gradle.kts << 'EOL'
-          plugins {
-              id("com.android.application")
-          }
-
-          android {
-              namespace = "com.webview.app"
-              compileSdk = 34
-              
-              defaultConfig {
-                  applicationId = "com.webview.app"
-                  minSdk = 21
-                  targetSdk = 34
-                  versionCode = 1
-                  versionName = "1.0"
-              }
-              
-              buildTypes {
-                  release {
-                      isMinifyEnabled = false
-                      proguardFiles(
-                          getDefaultProguardFile("proguard-android-optimize.txt"),
-                          "proguard-rules.pro"
-                      )
-                  }
-              }
-              
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-          }
-
-          dependencies {
-              implementation("androidx.appcompat:appcompat:1.6.1") {
-                  exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk7")
-                  exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
-              }
-              implementation("androidx.core:core-ktx:1.12.0") {
-                  exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk7")
-                  exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
-              }
-              implementation("org.jetbrains.kotlin:kotlin-stdlib:1.8.22")
-          }
-
-          repositories {
-              google()
-              mavenCentral()
-          }
-          EOL
-
-          # MainActivity.java
-          cat > AndroidApp/app/src/main/java/com/webview/app/MainActivity.java << 'EOL'
-          package com.webview.app;
-
-          import android.os.Bundle;
-          import android.webkit.WebView;
-          import android.webkit.WebViewClient;
-          import androidx.appcompat.app.AppCompatActivity;
-
-          public class MainActivity extends AppCompatActivity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  WebView webView = new WebView(this);
-                  webView.getSettings().setJavaScriptEnabled(true);
-                  webView.setWebViewClient(new WebViewClient());
-                  setContentView(webView);
-                  webView.loadUrl("file:///android_asset/index.html");
-              }
-          }
-          EOL
-
-          # AndroidManifest.xml
-          cat > AndroidApp/app/src/main/AndroidManifest.xml << 'EOL'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application
-                  android:allowBackup="true"
-                  android:label="Web App"
-                  android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          EOL
-
-          # styles.xml
-          cat > AndroidApp/app/src/main/res/values/styles.xml << 'EOL'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar" />
-          </resources>
-          EOL
-
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
-        with:
-          gradle-version: 8.5
-
-      - name: Build Debug APK
+      - name: Create Cordova project
         run: |
-          cd AndroidApp
-          gradle assembleDebug --warning-mode all
+          cordova create MiAplicacion com.example.miaplicacion MiAplicacion
+          cd MiAplicacion
+          cordova platform add android
+
+      - name: Copy web files
+        run: |
+          echo "${{ github.event.inputs.html }}" > MiAplicacion/www/index.html
+          echo "${{ github.event.inputs.css }}" > MiAplicacion/www/styles.css
+          echo "${{ github.event.inputs.js }}" > MiAplicacion/www/script.js
+
+      - name: Build APK
+        run: |
+          cd MiAplicacion
+          cordova build android --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+          name: app-release
+          path: MiAplicacion/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
