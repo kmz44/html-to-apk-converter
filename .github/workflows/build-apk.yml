@@ -36,6 +36,23 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Crear package.json si no existe
+        run: |
+          if [ ! -f package.json ]; then
+            echo "Creando package.json..."
+            echo '{
+              "name": "html-to-apk-converter",
+              "version": "1.0.0",
+              "description": "Convierte HTML en APK usando Capacitor",
+              "main": "index.js",
+              "scripts": {
+                "test": "echo \"Error: no test specified\" && exit 1"
+              },
+              "author": "",
+              "license": "MIT"
+            }' > package.json
+          fi
+
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
