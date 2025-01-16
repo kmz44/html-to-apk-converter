@@ -56,7 +56,8 @@ jobs:
       - name: Instalar herramientas de compilación de Android
         run: |
           echo "Instalando herramientas de compilación de Android..."
-          yes | sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}" "build-tools;${{ env.ANDROID_SDK_VERSION }}" --licenses
+          yes | sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}" "build-tools;30.0.3"
+          yes | sdkmanager --licenses
 
       - name: Instalar Gradle
         run: |
@@ -72,30 +73,70 @@ jobs:
           npm install -g cordova@latest native-run@latest cordova-res@latest
           cordova --version
 
-      - name: Crear y preparar proyecto Cordova
+      - name: Preparar proyecto Cordova
         run: |
-          echo "Creando proyecto Cordova..."
-          cordova create "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}" "${{ github.event.inputs.app_name }}"
-          cd "${{ github.event.inputs.app_name }}"
+          echo "Preparando proyecto Cordova..."
+          cordova create "${{ github.event.inputs.app_name || 'MiAplicacion' }}" \
+            "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
+            "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           echo "Agregando plataforma Android..."
           cordova platform add android@latest --verbose
-          echo "Copiando contenido HTML proporcionado..."
-          echo "${{ github.event.inputs.html }}" > www/index.html
-          echo "Instalando dependencias del proyecto..."
-          npm install
+          echo "Contenido del directorio platforms/android:"
+          ls -la platforms/android/
 
       - name: Configurar Gradle
         run: |
-          cd "${{ github.event.inputs.app_name }}"
           echo "Configurando Gradle..."
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           mkdir -p platforms/android/gradle/wrapper
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
+          if [ ! -f platforms/android/gradle/wrapper/gradle-wrapper.properties ]; then
+            echo "Creando gradle-wrapper.properties..."
+            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
+          fi
+          if [ ! -f platforms/android/build.gradle ]; then
+            echo "Creando build.gradle..."
+            cat <<EOL > platforms/android/build.gradle
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    compileSdkVersion ${{ env.ANDROID_SDK_VERSION }}
+    defaultConfig {
+        applicationId "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}"
+        minSdkVersion 16
+        targetSdkVersion ${{ env.ANDROID_SDK_VERSION }}
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.3.0'
+}
+EOL
+          fi
+          if [ ! -f platforms/android/gradlew ]; then
+            echo "Generando gradlew..."
+            cd platforms/android
+            gradle wrapper
+            cd ../..
+          fi
           chmod +x platforms/android/gradlew
 
       - name: Construir APK
         run: |
-          cd "${{ github.event.inputs.app_name }}"
-          echo "Limpiando y construyendo el proyecto..."
+          echo "Construyendo APK..."
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          ./platforms/android/gradlew --version
           ./platforms/android/gradlew clean --stacktrace
           cordova build android --release --verbose -- --stacktrace
         env:
@@ -103,8 +144,12 @@ jobs:
 
       - name: Configurar keystore
         run: |
-          cd "${{ github.event.inputs.app_name }}"
           echo "Configurando keystore..."
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          if [ -z "${{ secrets.KEYSTORE }}" ]; then
+            echo "Error: El secreto KEYSTORE no está configurado"
+            exit 1
+          fi
           echo "${{ secrets.KEYSTORE }}" | base64 -d > my-release-key.jks
           if [ ! -f my-release-key.jks ]; then
             echo "Error: No se pudo crear el archivo keystore"
@@ -113,23 +158,19 @@ jobs:
 
       - name: Firmar y alinear APK
         run: |
-          cd "${{ github.event.inputs.app_name }}"
+          echo "Firmando y alineando APK..."
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
           if [ -z "$APK_PATH" ]; then
             echo "Error: No se encontró el APK"
             exit 1
           fi
-          echo "Firmando APK..."
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore my-release-key.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -keypass "${{ secrets.KEY_PASSWORD }}" "$APK_PATH" "${{ secrets.KEY_ALIAS }}"
-          SIGNED_APK="app-release-signed.apk"
-          echo "Alineando APK..."
-          ${ANDROID_HOME}/build-tools/${{ env.ANDROID_SDK_VERSION }}/zipalign -v 4 "$APK_PATH" "$SIGNED_APK"
-          echo "Verificando APK alineado..."
-          ${ANDROID_HOME}/build-tools/${{ env.ANDROID_SDK_VERSION }}/apksigner verify --verbose "$SIGNED_APK"
-
-      - name: Subir APK firmada
-        uses: actions/upload-artifact@v4
-        with:
-          name: signed-apk
-          path: ${{ github.event.inputs.app_name }}/app-release-signed.apk
-          retention-days: 7
+          echo "APK encontrado en: $APK_PATH"
+          jarsigner -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore my-release-key.jks \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+           
+::contentReference[oaicite:0]{index=0}
+ 
