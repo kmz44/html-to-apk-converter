@@ -59,7 +59,13 @@ jobs:
           echo "Instalando Capacitor..."
           npm install -g @capacitor/cli
           npx cap init "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}"
+          
+          # Crear directorio www si no existe
+          mkdir -p www
+          
+          # Escribir el contenido HTML en www/index.html
           echo "${{ github.event.inputs.html }}" > www/index.html
+          
           npm install
           npx cap add android
 
