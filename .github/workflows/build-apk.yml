@@ -51,6 +51,11 @@ jobs:
           android-sdk: "33"  # Instala el SDK de Android 33
           accept-licenses: true  # Acepta las licencias automáticamente
 
+      - name: Instalar la plataforma del SDK de Android
+        run: |
+          echo "Instalando la plataforma del SDK de Android (android-33)..."
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platforms;android-33"
+
       - name: Instalar Cordova y dependencias globales
         run: |
           npm install -g cordova@12.0.0 
