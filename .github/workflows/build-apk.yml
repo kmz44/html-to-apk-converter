@@ -74,8 +74,10 @@ jobs:
       - name: Instalar Capacitor y dependencias
         run: |
           echo "Instalando Capacitor..."
-          npm install -g @capacitor/cli
-          npx cap init "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}"
+          npm install -g @capacitor/cli @capacitor/core
+          
+          # Inicializar el proyecto de Capacitor usando npm
+          npm exec -- cap init "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}"
           
           # Crear directorio www si no existe
           mkdir -p www
@@ -83,8 +85,17 @@ jobs:
           # Escribir el contenido HTML en www/index.html
           echo "${{ github.event.inputs.html }}" > www/index.html
           
+          # Instalar dependencias
           npm install
-          npx cap add android
+          
+          # Eliminar el directorio android si existe
+          if [ -d "android" ]; then
+            echo "Eliminando directorio android existente..."
+            rm -rf android
+          fi
+          
+          # Agregar la plataforma Android usando npm
+          npm exec -- cap add android
 
       - name: Construir APK
         run: |
