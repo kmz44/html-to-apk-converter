@@ -4,68 +4,128 @@ on:
   workflow_dispatch:
     inputs:
       html:
-        description: 'HTML content'
+        description: 'HTML content with embedded CSS and JS'
         required: true
-      css:
-        description: 'CSS content'
+        type: string
+      app_name:
+        description: 'Application name'
         required: false
-      js:
-        description: 'JavaScript content'
+        default: 'MiAplicacion'
+        type: string
+      package_name:
+        description: 'Package name'
         required: false
+        default: 'com.example.miaplicacion'
+        type: string
+
+env:
+  NODE_VERSION: '20'
+  JAVA_VERSION: '17'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       # Paso 1: Checkout del repositorio
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       # Paso 2: Configurar Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      # Paso 3: Instalar Cordova globalmente
-      - name: Install Cordova
+      # Paso 3: Configurar Java
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # Paso 4: Instalar Cordova y dependencias
+      - name: Install Cordova and dependencies
         run: |
-          npm install -g cordova
+          npm install -g cordova native-run cordova-res @ionic/cli
 
-      # Paso 4: Crear un proyecto Cordova
+      # Paso 5: Crear proyecto Cordova
       - name: Create Cordova project
         run: |
-          cordova create MiAplicacion com.example.miaplicacion MiAplicacion
-          cd MiAplicacion
-          cordova platform add android
+          cordova create "${{ inputs.app_name || 'MiAplicacion' }}" \
+            "${{ inputs.package_name || 'com.example.miaplicacion' }}" \
+            "${{ inputs.app_name || 'MiAplicacion' }}"
+          cd "${{ inputs.app_name || 'MiAplicacion' }}"
+          cordova platform add android@latest
+          cordova requirements
 
-      # Paso 5: Copiar el archivo index.html con todo anidado
-      - name: Copy web files
+      # Paso 6: Copiar el archivo HTML embebido
+      - name: Copy embedded HTML file
+        working-directory: ${{ inputs.app_name || 'MiAplicacion' }}/www
         run: |
-          echo "${{ github.event.inputs.html }}" > MiAplicacion/www/index.html
-          cd MiAplicacion
+          echo "${{ github.event.inputs.html }}" > index.html
 
-      # Paso 6: Construir la APK en modo release
+      # Paso 7: Configurar Gradle
+      - name: Configure Gradle
+        working-directory: ${{ inputs.app_name || 'MiAplicacion' }}/platforms/android
+        run: |
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxPermSize=2048m -XX:+HeapDumpOnOutOfMemoryError" >> gradle.properties
+          echo "org.gradle.parallel=true" >> gradle.properties
+          echo "org.gradle.daemon=true" >> gradle.properties
+
+      # Paso 8: Construir APK
       - name: Build APK
+        working-directory: ${{ inputs.app_name || 'MiAplicacion' }}
         run: |
-          cd MiAplicacion
-          cordova build android --release
+          cordova build android --release --verbose
+        env:
+          JAVA_OPTS: '-Xmx4g'
 
-      # Paso 7: Configurar el keystore para firmar la APK
-      - name: Set up keystore
+      # Paso 9: Configurar keystore
+      - name: Setup keystore
         run: |
-          echo "${{ secrets.KEYSTORE }}" > my-release-key.jks
-          echo "keystore file created"
+          if [ -z "${{ secrets.KEYSTORE }}" ]; then
+            echo "Error: KEYSTORE secret is not set"
+            exit 1
+          fi
+          echo "${{ secrets.KEYSTORE }}" | base64 -d > my-release-key.jks
+          
+          if [ ! -f my-release-key.jks ]; then
+            echo "Error: Failed to create keystore file"
+            exit 1
+          fi
 
-      # Paso 8: Firmar la APK
-      - name: Sign APK
+      # Paso 10: Firmar y alinear APK
+      - name: Sign and align APK
         run: |
-          cd MiAplicacion/platforms/android/app/build/outputs/apk/release
-          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore my-release-key.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} app-release-unsigned.apk alias_name
-          zipalign -v 4 app-release-unsigned.apk app-release-signed.apk
+          APK_PATH=$(find ${{ inputs.app_name || 'MiAplicacion' }}/platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
+          
+          if [ -z "$APK_PATH" ]; then
+            echo "Error: APK not found"
+            exit 1
+          fi
+          
+          echo "Signing APK: $APK_PATH"
+          
+          jarsigner -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore my-release-key.jks \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.KEY_PASSWORD }}" \
+            "$APK_PATH" \
+            "${{ secrets.KEY_ALIAS || 'alias_name' }}"
+          
+          SIGNED_APK="app-release-signed.apk"
+          ${ANDROID_HOME}/build-tools/*/zipalign -v 4 "$APK_PATH" "$SIGNED_APK"
+          
+          # Verificar firma
+          ${ANDROID_HOME}/build-tools/*/apksigner verify "$SIGNED_APK"
 
-      # Paso 9: Subir la APK firmada como artefacto
+      # Paso 11: Subir APK firmada
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-signed
-          path: MiAplicacion/platforms/android/app/build/outputs/apk/release/app-release-signed.apk
+          name: signed-apk
+          path: app-release-signed.apk
+          retention-days: 7
