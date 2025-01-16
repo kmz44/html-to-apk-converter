@@ -65,16 +65,26 @@ jobs:
 
       - name: Crear proyecto Cordova
         run: |
+          # Crear el proyecto Cordova
           cordova create "${{ github.event.inputs.app_name || 'MiAplicacion' }}" \
             "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
             "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          
+          # Cambiar al directorio del proyecto
           cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          
+          # Verificar que el proyecto se creó correctamente
+          if [ ! -f config.xml ]; then
+            echo "Error: El proyecto Cordova no se creó correctamente."
+            exit 1
+          fi
 
       - name: Agregar plataforma Android
         run: |
           echo "Agregando plataforma Android..."
           cordova platform add android@latest
-          echo "Verificando la existencia de la plataforma Android..."
+          
+          # Verificar que la plataforma Android se agregó correctamente
           if [ ! -d platforms/android ]; then
             echo "Error: La plataforma Android no se ha agregado correctamente."
             echo "Listando el contenido del directorio actual:"
