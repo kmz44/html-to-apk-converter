@@ -89,6 +89,51 @@ jobs:
           # Verificar la estructura del directorio
           echo "Contenido del directorio platforms/android:"
           ls -la platforms/android/
+
+      - name: Configurar Gradle
+        run: |
+          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          
+          # Crear directorio gradle si no existe
+          mkdir -p platforms/android/gradle/wrapper
+          
+          # Crear gradle-wrapper.properties si no existe
+          if [ ! -f platforms/android/gradle/wrapper/gradle-wrapper.properties ]; then
+            echo "Creando gradle-wrapper.properties..."
+            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
+          fi
+          
+          # Crear build.gradle si no existe
+          if [ ! -f platforms/android/build.gradle ]; then
+            echo "Creando build.gradle..."
+            cat <<EOL > platforms/android/build.gradle
+            plugins {
+                id 'com.android.application'
+            }
+
+            android {
+                compileSdkVersion ${{ env.ANDROID_SDK_VERSION }}
+                defaultConfig {
+                    applicationId "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}"
+                    minSdkVersion 16
+                    targetSdkVersion ${{ env.ANDROID_SDK_VERSION }}
+                    versionCode 1
+                    versionName "1.0"
+                }
+                buildTypes {
+                    release {
+                        minifyEnabled false
+                        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                    }
+                }
+            }
+
+            dependencies {
+                implementation fileTree(dir: 'libs', include: ['*.jar'])
+                implementation 'com.android.support:appcompat-v7:28.0.0'
+            }
+            EOL
+          fi
           
           # Generar gradlew si no existe
           if [ ! -f platforms/android/gradlew ]; then
@@ -98,32 +143,8 @@ jobs:
             cd ../..
           fi
           
-          # Verificar que gradlew se creó
-          if [ ! -f platforms/android/gradlew ]; then
-            echo "Error: No se pudo generar gradlew"
-            exit 1
-          fi
-          
-          # Dar permisos de ejecución
+          # Dar permisos de ejecución a gradlew
           chmod +x platforms/android/gradlew
-          
-          # Verificar requisitos con verbose
-          cordova requirements --verbose
-
-      - name: Configurar build.gradle
-        run: |
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          # Asegurar que el directorio gradle existe
-          mkdir -p platforms/android/gradle/wrapper
-          
-          # Crear gradle-wrapper.properties
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
-          
-          # Configurar build.gradle si es necesario
-          if [ -f platforms/android/build.gradle ]; then
-            echo "Configurando build.gradle..."
-            sed -i 's/gradle-[0-9.]\+/gradle-${{ env.GRADLE_VERSION }}/g' platforms/android/build.gradle
-          fi
 
       - name: Construir APK
         run: |
