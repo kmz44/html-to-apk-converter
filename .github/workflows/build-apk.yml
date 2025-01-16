@@ -37,7 +37,7 @@ jobs:
 
       - name: Create base project structure
         run: |
-          # Create package.json
+          # Crear package.json
           echo '{
             "name": "html-to-apk-converter",
             "version": "1.0.0",
@@ -59,7 +59,7 @@ jobs:
             "license": "MIT"
           }' > package.json
           
-          # Install dependencies
+          # Instalar dependencias
           npm install
 
       - name: Set up Java
@@ -81,16 +81,16 @@ jobs:
 
       - name: Setup Capacitor project
         run: |
-          # Create www directory
+          # Crear directorio www
           mkdir -p www
           
-          # Create index.html with proper content encoding
+          # Crear index.html con el contenido HTML proporcionado
           echo '${{ github.event.inputs.html }}' | base64 --decode > www/index.html || echo '${{ github.event.inputs.html }}' > www/index.html
           
-          # Initialize Capacitor project
+          # Inicializar proyecto de Capacitor
           npx cap init "${{ github.event.inputs.app_name }}" "${{ github.event.inputs.package_name }}" --web-dir="www"
           
-          # Create capacitor.config.ts with additional configurations
+          # Crear capacitor.config.json con configuraciones adicionales
           echo '{
             "appId": "${{ github.event.inputs.package_name }}",
             "appName": "${{ github.event.inputs.app_name }}",
@@ -110,13 +110,13 @@ jobs:
             }
           }' > capacitor.config.json
           
-          # Remove existing android directory if present
+          # Eliminar el directorio android si existe
           rm -rf android
           
-          # Add Android platform
+          # Agregar plataforma Android
           npx cap add android
           
-          # Update Android configuration
+          # Sincronizar configuración de Android
           npx cap sync android
 
       - name: Build debug APK
@@ -125,9 +125,15 @@ jobs:
           chmod +x gradlew
           ./gradlew clean assembleDebug --stacktrace
 
-      - name: Upload debug APK
+      - name: Comprimir proyecto de Android Studio
+        run: |
+          zip -r android_project.zip android/
+
+      - name: Upload debug APK and Android project
         uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: build-artifacts
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android_project.zip
           retention-days: 7
