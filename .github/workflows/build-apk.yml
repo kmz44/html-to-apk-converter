@@ -50,18 +50,18 @@ jobs:
       - name: Configurar el SDK de Android
         uses: android-actions/setup-android@v3
         with:
-          api-level: ${{ env.ANDROID_SDK_VERSION }}
-          accept-licenses: true
+          cmdline-tools-version: '10406996' # Versión 11.0 de las herramientas de línea de comandos
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
 
-      - name: Instalar herramientas de compilación de Android
+      - name: Instalar paquetes adicionales del SDK de Android
         run: |
-          echo "Instalando herramientas de compilación de Android..."
-          yes | sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}" "build-tools;30.0.3"
-          yes | sdkmanager --licenses
+          echo "Instalando la plataforma del SDK de Android (android-${{ env.ANDROID_SDK_VERSION }})..."
+          yes | sdkmanager "platforms;android-${{ env.ANDROID_SDK_VERSION }}" "build-tools;${{ env.ANDROID_SDK_VERSION }}.0.0"
+          sdkmanager --list_installed
 
       - name: Instalar Gradle
         run: |
-          echo "Instalando Gradle..."
           wget https://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip
           unzip gradle-${{ env.GRADLE_VERSION }}-bin.zip
           export PATH=$PATH:$PWD/gradle-${{ env.GRADLE_VERSION }}/bin
@@ -69,31 +69,41 @@ jobs:
 
       - name: Instalar Cordova y dependencias globales
         run: |
-          echo "Instalando Cordova y dependencias globales..."
           npm install -g cordova@latest native-run@latest cordova-res@latest
           cordova --version
 
       - name: Preparar proyecto Cordova
         run: |
-          echo "Preparando proyecto Cordova..."
-          cordova create "${{ github.event.inputs.app_name || 'MiAplicacion' }}" \
-            "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}" \
-            "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          # Crear el proyecto Cordova
+          cordova create "${{ github.event.inputs.app_name }}" \
+            "${{ github.event.inputs.package_name }}" \
+            "${{ github.event.inputs.app_name }}"
+          
+          # Cambiar al directorio del proyecto
+          cd "${{ github.event.inputs.app_name }}"
+          
+          # Agregar plataforma Android con verbose
           echo "Agregando plataforma Android..."
           cordova platform add android@latest --verbose
+          
+          # Verificar la estructura del directorio
           echo "Contenido del directorio platforms/android:"
           ls -la platforms/android/
 
       - name: Configurar Gradle
         run: |
-          echo "Configurando Gradle..."
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          cd "${{ github.event.inputs.app_name }}"
+          
+          # Crear directorio gradle si no existe
           mkdir -p platforms/android/gradle/wrapper
+          
+          # Crear gradle-wrapper.properties si no existe
           if [ ! -f platforms/android/gradle/wrapper/gradle-wrapper.properties ]; then
             echo "Creando gradle-wrapper.properties..."
             echo "distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip" > platforms/android/gradle/wrapper/gradle-wrapper.properties
           fi
+          
+          # Crear build.gradle si no existe
           if [ ! -f platforms/android/build.gradle ]; then
             echo "Creando build.gradle..."
             cat <<EOL > platforms/android/build.gradle
@@ -104,7 +114,7 @@ plugins {
 android {
     compileSdkVersion ${{ env.ANDROID_SDK_VERSION }}
     defaultConfig {
-        applicationId "${{ github.event.inputs.package_name || 'com.example.miaplicacion' }}"
+        applicationId "${{ github.event.inputs.package_name }}"
         minSdkVersion 16
         targetSdkVersion ${{ env.ANDROID_SDK_VERSION }}
         versionCode 1
@@ -120,23 +130,29 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:appcompat:1.3.0'
+    implementation 'androidx.appcompat:appcompat:1.3.1'
 }
 EOL
           fi
+          
+          # Generar gradlew si no existe
           if [ ! -f platforms/android/gradlew ]; then
             echo "Generando gradlew..."
             cd platforms/android
             gradle wrapper
             cd ../..
           fi
+          
+          # Dar permisos de ejecución a gradlew
           chmod +x platforms/android/gradlew
 
       - name: Construir APK
         run: |
-          echo "Construyendo APK..."
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          cd "${{ github.event.inputs.app_name }}"
+          # Mostrar versión de gradle
           ./platforms/android/gradlew --version
+          
+          # Limpiar y construir
           ./platforms/android/gradlew clean --stacktrace
           cordova build android --release --verbose -- --stacktrace
         env:
@@ -144,8 +160,7 @@ EOL
 
       - name: Configurar keystore
         run: |
-          echo "Configurando keystore..."
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          cd "${{ github.event.inputs.app_name }}"
           if [ -z "${{ secrets.KEYSTORE }}" ]; then
             echo "Error: El secreto KEYSTORE no está configurado"
             exit 1
@@ -158,19 +173,9 @@ EOL
 
       - name: Firmar y alinear APK
         run: |
-          echo "Firmando y alineando APK..."
-          cd "${{ github.event.inputs.app_name || 'MiAplicacion' }}"
+          cd "${{ github.event.inputs.app_name }}"
           APK_PATH=$(find platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
-          if [ -z "$APK_PATH" ]; then
-            echo "Error: No se encontró el APK"
-            exit 1
-          fi
-          echo "APK encontrado en: $APK_PATH"
-          jarsigner -verbose \
-            -sigalg SHA256withRSA \
-            -digestalg SHA-256 \
-            -keystore my-release-key.jks \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-           
+          
+          if [ -z "$
 ::contentReference[oaicite:0]{index=0}
  
