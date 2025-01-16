@@ -89,7 +89,6 @@ jobs:
           cordova requirements
 
       - name: Configurar ajustes del proyecto
-        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
           # Actualizar config.xml
           sed -i "s/<platform name=\"android\">/<platform name=\"android\">\n        <preference name=\"android-targetSdkVersion\" value=\"${{ github.event.inputs.android_target }}\"\/>/g" config.xml
@@ -102,17 +101,14 @@ jobs:
           fi
 
       - name: Otorgar permisos de ejecución a gradlew
-        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
         run: |
-          chmod +x gradlew
+          chmod +x platforms/android/gradlew
 
       - name: Limpiar proyecto (con modo de depuración)
-        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android
         run: |
-          ./gradlew clean --stacktrace
+          ./platforms/android/gradlew clean --stacktrace
 
       - name: Construir APK (con modo de depuración)
-        working-directory: ${{ github.event.inputs.app_name || 'MiAplicacion' }}
         run: |
           cordova build android --release --verbose -- --stacktrace
         env:
@@ -132,7 +128,7 @@ jobs:
 
       - name: Firmar y alinear APK
         run: |
-          APK_PATH=$(find ${{ github.event.inputs.app_name || 'MiAplicacion' }}/platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
+          APK_PATH=$(find platforms/android/app/build/outputs/apk/release -name "*.apk" -type f | head -n 1)
           
           if [ -z "$APK_PATH" ]; then
             echo "Error: No se encontró el APK"
