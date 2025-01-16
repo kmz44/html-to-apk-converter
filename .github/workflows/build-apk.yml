@@ -60,9 +60,7 @@ jobs:
 
       - name: Instalar Cordova y dependencias globales
         run: |
-          npm install -g cordova@latest
-          npm install -g native-run@latest
-          npm install -g cordova-res@latest
+          npm install -g cordova@latest native-run@latest cordova-res@latest
           cordova --version
 
       - name: Crear proyecto Cordova
