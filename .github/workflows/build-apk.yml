@@ -1,4 +1,4 @@
-name: Build and Sign APK with Capacitor
+name: Build Debug APK with Capacitor
 
 on:
   workflow_dispatch:
@@ -100,33 +100,15 @@ jobs:
           # Agregar la plataforma Android
           npm exec -- cap add android
 
-      - name: Construir APK
+      - name: Construir APK de depuración
         run: |
-          echo "Construyendo APK..."
+          echo "Construyendo APK de depuración..."
           cd android
-          ./gradlew clean assembleRelease --stacktrace
-        env:
-          JAVA_OPTS: '-Xmx4g'
+          ./gradlew clean assembleDebug --stacktrace
 
-      - name: Configurar keystore
-        run: |
-          echo "Configurando keystore..."
-          echo "${{ secrets.KEYSTORE }}" | base64 -d > my-release-key.jks
-          if [ ! -f my-release-key.jks ]; then
-            echo "Error: No se pudo crear el archivo keystore"
-            exit 1
-          fi
-
-      - name: Firmar y alinear APK
-        run: |
-          echo "Firmando APK..."
-          cd android/app/build/outputs/apk/release
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore my-release-key.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -keypass "${{ secrets.KEY_PASSWORD }}" app-release-unsigned.apk "${{ secrets.KEY_ALIAS }}"
-          ${ANDROID_HOME}/build-tools/${{ env.ANDROID_SDK_VERSION }}.0.0/zipalign -v 4 app-release-unsigned.apk app-release-signed.apk
-
-      - name: Subir APK firmada
+      - name: Subir APK de depuración
         uses: actions/upload-artifact@v4
         with:
-          name: signed-apk
-          path: android/app/build/outputs/apk/release/app-release-signed.apk
+          name: debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
